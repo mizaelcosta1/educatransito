@@ -11,6 +11,8 @@ import androidx.lifecycle.viewModelScope
 import br.com.educatransito.data.*
 import br.com.educatransito.media.AttachmentStore
 import br.com.educatransito.reports.PdfReportWriter
+import br.com.educatransito.ocr.HandwrittenFormParser
+import br.com.educatransito.ocr.OfflineTextRecognizer
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -48,6 +50,7 @@ class OrientationViewModel(application: Application, private val savedState: Sav
     var mediaToCreate by mutableStateOf<Pair<String, String>?>(null)
         private set
     var lastPdfUri by mutableStateOf<Uri?>(null)
+    var ocrRawText by mutableStateOf<String?>(null)
         private set
     val records = repository.observeAll().onEach { loaded = true }.catch {
         loaded = true
@@ -88,6 +91,7 @@ class OrientationViewModel(application: Application, private val savedState: Sav
     }
 
     fun clearMessage() { message = null }
+    fun dismissOcrReview() { ocrRawText = null }
     fun showMessage(text: String) { message = text }
 
     fun removeDraftAttachment(id: String) {
@@ -152,6 +156,30 @@ class OrientationViewModel(application: Application, private val savedState: Sav
                 savedState.remove<String>("mediaKind")
                 savedState.remove<Long>("mediaTarget")
             }
+        }
+    }
+
+    fun recognizeSelectedForm(uri: Uri?) {
+        if (uri == null || busy != null) return
+        busy = "Lendo a ficha offline…"
+        viewModelScope.launch {
+            try {
+                val raw = withContext(Dispatchers.Default) { OfflineTextRecognizer().recognize(getApplication(), uri) }
+                require(raw.isNotBlank()) { "Nenhum texto reconhecido. Tente uma foto mais nítida." }
+                val parsed = HandwrittenFormParser.parse(raw)
+                draft = draft.copy(
+                    citizenName = parsed.name.ifBlank { draft.citizenName },
+                    plate = parsed.plate.ifBlank { draft.plate },
+                    audience = parsed.audience.ifBlank { draft.audience },
+                    description = parsed.guidance.ifBlank { draft.description },
+                    primaryTopic = parsed.subject.ifBlank { draft.primaryTopic }
+                )
+                savedState["draft"] = draftJson(draft).toString()
+                ocrRawText = raw
+                message = "Leitura concluída. Confira os campos antes de salvar."
+            } catch (error: Exception) {
+                handleError(error, "Não foi possível ler a ficha. Tente outra imagem.")
+            } finally { busy = null }
         }
     }
 

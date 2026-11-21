@@ -55,7 +55,7 @@ jobs:
       - name: Verify installable APK and record checksum
         run: |
           apk_dir=app/build/outputs/apk/debug
-          cp "$apk_dir/app-debug.apk" "$apk_dir/EDUCATRANSITO-0.2.0-debug.apk"
+          cp "$apk_dir/app-debug.apk" "$apk_dir/EDUCATRANSITO-0.3.0-debug.apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk_dir/EDUCATRANSITO-0.2.0-debug.apk" > "$apk_dir/signature.txt"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk_dir/EDUCATRANSITO-0.2.0-debug.apk" > "$apk_dir/package.txt"
           cd "$apk_dir"

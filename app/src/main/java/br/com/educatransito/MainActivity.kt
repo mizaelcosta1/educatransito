@@ -73,6 +73,7 @@ private fun EducatransitoApp(vm: OrientationViewModel = viewModel()) {
     val records by vm.records.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val mediaPicker = rememberLauncherForActivityResult(LocalDocumentPicker()) { vm.importSelectedMedia(it) }
+    val ocrPicker = rememberLauncherForActivityResult(LocalDocumentPicker()) { vm.recognizeSelectedForm(it) }
     val pdfPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { vm.exportPdf(it) }
     val copyPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         vm.exportAttachment(if (result.resultCode == Activity.RESULT_OK) result.data?.data else null)
@@ -124,7 +125,7 @@ private fun EducatransitoApp(vm: OrientationViewModel = viewModel()) {
         }) { padding ->
             val modifier = Modifier.padding(padding).imePadding()
             when (vm.page) {
-                "new" -> NewOrientationScreen(vm, modifier, onMedia = { pickMedia(it, null) })
+                "new" -> NewOrientationScreen(vm, modifier, onMedia = { pickMedia(it, null) }, onOcr = { ocrPicker.launch(arrayOf("image/*")) })
                 "plate" -> HistoryScreen(records, vm.loaded, true, modifier, vm::openRecord)
                 "history" -> HistoryScreen(records, vm.loaded, false, modifier, vm::openRecord)
                 "detail" -> {
@@ -149,6 +150,17 @@ private fun EducatransitoApp(vm: OrientationViewModel = viewModel()) {
                     onOpenPdf = vm.lastPdfUri?.let { uri -> { openDocument(context, uri, "application/pdf", vm::showMessage) } })
                 else -> HomeScreen(records.size, modifier, vm::navigate)
             }
+        }
+        vm.ocrRawText?.let { raw ->
+            AlertDialog(onDismissRequest = { vm.dismissOcrReview() },
+                title = { Text("Confira a leitura da ficha") },
+                text = { Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                    Text("Os campos sugeridos foram preenchidos. A escrita cursiva pode conter erros; confira nome, placa e relato antes de salvar.", color = Muted)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Texto reconhecido", fontWeight = FontWeight.Bold)
+                    Text(raw, fontSize = 13.sp)
+                } },
+                confirmButton = { TextButton(onClick = { vm.dismissOcrReview() }) { Text("CONFERIR CAMPOS") } })
         }
         vm.busy?.let { status ->
             Dialog(onDismissRequest = {}) {
@@ -200,7 +212,7 @@ private fun HomeAction(title: String, subtitle: String, icon: androidx.compose.u
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun NewOrientationScreen(vm: OrientationViewModel, modifier: Modifier, onMedia: (String) -> Unit) {
+private fun NewOrientationScreen(vm: OrientationViewModel, modifier: Modifier, onMedia: (String) -> Unit, onOcr: () -> Unit) {
     val form = vm.draft
     var expanded by remember { mutableStateOf(false) }
     var extras by rememberSaveable { mutableStateOf(false) }
@@ -209,7 +221,9 @@ private fun NewOrientationScreen(vm: OrientationViewModel, modifier: Modifier, o
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle("Nova orientação")
-        Text("Preencha local, orientação principal e relato. O protocolo será gerado ao salvar.", color = Muted)
+        Text("Importe uma foto de ficha preenchida para leitura automática offline.", color = Muted)
+        OutlinedButton(onClick = onOcr, modifier = Modifier.fillMaxWidth()) { Text("LER FICHA FOTOGRAFADA (OCR OFFLINE)") }
+        Text("Revise e corrija os campos sugeridos antes de salvar.", color = Muted, fontSize = 12.sp)
         Input(form.plate, "Placa (opcional)", 10, capitalization = KeyboardCapitalization.Characters) { text ->
             vm.updateDraft { it.copy(plate = ProtocolGenerator.normalizePlate(text).take(7)) }
         }
