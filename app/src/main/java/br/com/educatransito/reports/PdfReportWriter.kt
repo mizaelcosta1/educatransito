@@ -30,7 +30,8 @@ class PdfReportWriter(context: Context) {
 
     fun write(output: OutputStream, records: List<OrientationRecord>, detailed: Boolean, periodLabel: String) {
         val summary = ReportSummary.from(records)
-        PdfDocument().use { document ->
+        val document = PdfDocument()
+        try {
             val layout = ReportPages(document, if (detailed) "RELATÓRIO DETALHADO" else "RELATÓRIO SIMPLES")
             try {
                 layout.heading("Histórico de orientações educativas")
@@ -71,6 +72,8 @@ class PdfReportWriter(context: Context) {
                 // A failed output/copy must not leave a started native PDF page open.
                 layout.finish()
             }
+        } finally {
+            document.close()
         }
     }
 

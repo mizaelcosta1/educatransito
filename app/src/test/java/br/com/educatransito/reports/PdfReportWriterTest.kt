@@ -68,9 +68,11 @@ class PdfReportWriterTest {
 
     private fun renderAndCheck(file: File, preview: File, expectMultiplePages: Boolean) {
         ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
-            PdfRenderer(descriptor).use { renderer ->
+            val renderer = PdfRenderer(descriptor)
+            try {
                 if (expectMultiplePages) assertTrue(renderer.pageCount >= 3) else assertEquals(1, renderer.pageCount)
-                renderer.openPage(0).use { page ->
+                val page = renderer.openPage(0)
+                try {
                     assertEquals(595, page.width)
                     assertEquals(842, page.height)
                     val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
@@ -78,7 +80,11 @@ class PdfReportWriterTest {
                     page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                     preview.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
                     bitmap.recycle()
+                } finally {
+                    page.close()
                 }
+            } finally {
+                renderer.close()
             }
         }
     }
