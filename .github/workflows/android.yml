@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,6 +34,24 @@ jobs:
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Test, lint and build Android APK
         run: gradle testDebugUnitTest lintDebug assembleDebug --no-daemon --stacktrace
+      - name: Enable Android emulator hardware acceleration
+        run: |
+          printf '%s\n' 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test native PDF and media on Android 8.0
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 26
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 2048M
+          heap-size: 256M
+          disk-size: 2048M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
+          script: bash tools/run-connected-tests.sh
       - name: Verify installable APK and record checksum
         run: |
           apk_dir=app/build/outputs/apk/debug
@@ -51,6 +69,8 @@ jobs:
           path: |
             app/build/reports/tests/
             app/build/test-results/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
             app/build/reports/lint-results-debug.*
             app/build/qa/
             app/schemas/

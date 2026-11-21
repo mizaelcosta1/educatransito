@@ -9,6 +9,10 @@ gradle testDebugUnitTest lintDebug assembleDebug --no-daemon
 ```
 
 O workflow `Android CI` executa os testes, a análise Android Lint e a compilação.
+Em seguida instala o aplicativo em um emulador Android 8.0 (API 26), com
+aceleração KVM, e executa `gradle connectedDebugAndroidTest`. Essa etapa usa as
+implementações reais de PDF e mídia da plataforma; os PDFs e suas páginas
+renderizadas são copiados do emulador antes de encerrá-lo.
 Depois verifica a assinatura do APK com `apksigner`, lê a identificação do pacote
 com `aapt` e calcula o SHA-256 do arquivo distribuído. O artefato
 `educatransito-debug-apk` contém o APK e esses comprovantes. O artefato

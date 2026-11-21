@@ -1,7 +1,7 @@
 package br.com.educatransito
 
 import android.graphics.Bitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
+import android.graphics.Canvas
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import java.io.File
@@ -71,9 +71,22 @@ class MainActivitySmokeTest {
     }
 
     private fun screenshot(name: String) {
+        // Robolectric does not schedule PixelCopy's forced redraw reliably. Draw the
+        // actual decor hierarchy to a native bitmap after Compose has become idle.
+        val bitmap = compose.runOnIdle {
+            val decor = compose.activity.window.decorView
+            check(decor.width > 0 && decor.height > 0)
+            Bitmap.createBitmap(decor.width, decor.height, Bitmap.Config.ARGB_8888).also {
+                decor.draw(Canvas(it))
+            }
+        }
         val folder = File("build/qa").apply { mkdirs() }
-        File(folder, name).outputStream().use {
-            check(compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it))
+        try {
+            File(folder, name).outputStream().use {
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+            }
+        } finally {
+            bitmap.recycle()
         }
     }
 }

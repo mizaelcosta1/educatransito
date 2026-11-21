@@ -8,22 +8,21 @@ import android.graphics.Paint
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import br.com.educatransito.data.AttachmentEntity
+import br.com.educatransito.data.CitizenEntity
+import br.com.educatransito.data.OrientationEntity
+import br.com.educatransito.data.OrientationRecord
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
-import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28])
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@RunWith(AndroidJUnit4::class)
 class PdfReportWriterTest {
     @Test fun createsA4SimpleAndPaginatedDetailedReportsWithLocalImageAndVideoMetadata() {
-        val context: Context = RuntimeEnvironment.getApplication()
+        val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val attachments = File(context.filesDir, "attachments").apply { mkdirs() }
         val imageFile = File(attachments, "qa-image.png")
         Bitmap.createBitmap(900, 600, Bitmap.Config.ARGB_8888).apply {
@@ -54,7 +53,7 @@ class PdfReportWriterTest {
                 )
             )
         }
-        val directory = File("build/qa").apply { mkdirs() }
+        val directory = File(requireNotNull(context.getExternalFilesDir(null)), "qa").apply { mkdirs() }
         val simple = File(directory, "relatorio-simples-teste.pdf")
         val detailed = File(directory, "relatorio-detalhado-teste.pdf")
         val writer = PdfReportWriter(context)
@@ -71,17 +70,23 @@ class PdfReportWriterTest {
             val renderer = PdfRenderer(descriptor)
             try {
                 if (expectMultiplePages) assertTrue(renderer.pageCount >= 3) else assertEquals(1, renderer.pageCount)
-                val page = renderer.openPage(0)
-                try {
-                    assertEquals(595, page.width)
-                    assertEquals(842, page.height)
-                    val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
-                    bitmap.eraseColor(Color.WHITE)
-                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                    preview.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-                    bitmap.recycle()
-                } finally {
-                    page.close()
+                for (index in 0 until renderer.pageCount) {
+                    val page = renderer.openPage(index)
+                    try {
+                        assertEquals(595, page.width)
+                        assertEquals(842, page.height)
+                        val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
+                        try {
+                            bitmap.eraseColor(Color.WHITE)
+                            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                            val image = if (index == 0) preview else File(preview.parentFile, "${preview.nameWithoutExtension}-${index + 1}.png")
+                            image.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                        } finally {
+                            bitmap.recycle()
+                        }
+                    } finally {
+                        page.close()
+                    }
                 }
             } finally {
                 renderer.close()
@@ -89,3 +94,25 @@ class PdfReportWriterTest {
         }
     }
 }
+
+
+private fun reportRecord(): OrientationRecord = OrientationRecord(
+    orientation = OrientationEntity(
+        id = 1,
+        protocol = "EDU-2026-000001",
+        protocolYear = 2026,
+        protocolSequence = 1,
+        citizenId = 1,
+        vehiclePlate = "ABC1D23",
+        occurredAt = 1795186800000L,
+        location = "Praça de teste",
+        audience = "Motorista",
+        primaryTopic = "Cinto",
+        additionalTopics = "[]",
+        description = "RELATO DE TESTE: orientação educativa realizada.",
+        agentNotes = "Observação exclusiva do relatório detalhado."
+    ),
+    citizen = CitizenEntity(id = 1, fullName = "Cidadão fictício para teste", normalizedName = "cidadao ficticio para teste"),
+    vehicle = null,
+    attachments = emptyList()
+)
