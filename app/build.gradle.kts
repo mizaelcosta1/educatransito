@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.educatransito"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true }
@@ -53,6 +53,7 @@ dependencies {
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.mlkit:text-recognition:16.0.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.robolectric:robolectric:4.14.1")
