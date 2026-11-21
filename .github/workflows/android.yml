@@ -56,10 +56,10 @@ jobs:
         run: |
           apk_dir=app/build/outputs/apk/debug
           cp "$apk_dir/app-debug.apk" "$apk_dir/EDUCATRANSITO-0.3.0-debug.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk_dir/EDUCATRANSITO-0.2.0-debug.apk" > "$apk_dir/signature.txt"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk_dir/EDUCATRANSITO-0.2.0-debug.apk" > "$apk_dir/package.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk_dir/EDUCATRANSITO-0.3.0-debug.apk" > "$apk_dir/signature.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk_dir/EDUCATRANSITO-0.3.0-debug.apk" > "$apk_dir/package.txt"
           cd "$apk_dir"
-          sha256sum EDUCATRANSITO-0.2.0-debug.apk > SHA256SUMS
+          sha256sum EDUCATRANSITO-0.3.0-debug.apk > SHA256SUMS
           cat signature.txt package.txt SHA256SUMS
       - name: Upload verification results
         if: always()
@@ -81,7 +81,7 @@ jobs:
         with:
           name: educatransito-debug-apk
           path: |
-            app/build/outputs/apk/debug/EDUCATRANSITO-0.2.0-debug.apk
+            app/build/outputs/apk/debug/EDUCATRANSITO-0.3.0-debug.apk
             app/build/outputs/apk/debug/SHA256SUMS
             app/build/outputs/apk/debug/signature.txt
             app/build/outputs/apk/debug/package.txt
