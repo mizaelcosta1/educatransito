@@ -151,6 +151,17 @@ private fun EducatransitoApp(vm: OrientationViewModel = viewModel()) {
                 else -> HomeScreen(records.size, modifier, vm::navigate)
             }
         }
+        vm.ocrRawText?.let { raw ->
+            AlertDialog(onDismissRequest = { vm.dismissOcrReview() },
+                title = { Text("Confira a leitura da ficha") },
+                text = { Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                    Text("Os campos sugeridos foram preenchidos. A escrita cursiva pode conter erros; confira nome, placa e relato antes de salvar.", color = Muted)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Texto reconhecido", fontWeight = FontWeight.Bold)
+                    Text(raw, fontSize = 13.sp)
+                } },
+                confirmButton = { TextButton(onClick = { vm.dismissOcrReview() }) { Text("CONFERIR CAMPOS") } })
+        }
         vm.busy?.let { status ->
             Dialog(onDismissRequest = {}) {
                 Surface(shape = MaterialTheme.shapes.large) {
