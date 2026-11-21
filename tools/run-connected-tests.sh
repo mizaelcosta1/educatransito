@@ -5,7 +5,9 @@ set -euo pipefail
 # diagnostics before the action shuts down the emulator, including on failure.
 mkdir -p app/build/qa
 test_status=0
-gradle connectedDebugAndroidTest --no-daemon --stacktrace || test_status=$?
+# AGP normally uninstalls both APKs after instrumentation, which removes the
+# target app's external files. Preserve them until adb has collected the PDFs.
+gradle connectedDebugAndroidTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true --no-daemon --stacktrace || test_status=$?
 adb logcat -d > app/build/qa/android-26-logcat.txt || true
 
 copy_status=0
