@@ -13,6 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,12 +32,38 @@ jobs:
           packages: platform-tools
       - name: Install Android platform
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - name: Run unit tests and assemble debug APK
-        run: gradle testDebugUnitTest assembleDebug --no-daemon
+      - name: Test, lint and build Android APK
+        run: gradle testDebugUnitTest lintDebug assembleDebug --no-daemon --stacktrace
+      - name: Verify installable APK and record checksum
+        run: |
+          apk_dir=app/build/outputs/apk/debug
+          cp "$apk_dir/app-debug.apk" "$apk_dir/EDUCATRANSITO-0.2.0-debug.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk_dir/EDUCATRANSITO-0.2.0-debug.apk" > "$apk_dir/signature.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk_dir/EDUCATRANSITO-0.2.0-debug.apk" > "$apk_dir/package.txt"
+          cd "$apk_dir"
+          sha256sum EDUCATRANSITO-0.2.0-debug.apk > SHA256SUMS
+          cat signature.txt package.txt SHA256SUMS
+      - name: Upload verification results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: educatransito-verification
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+            app/build/reports/lint-results-debug.*
+            app/build/qa/
+            app/schemas/
+          if-no-files-found: warn
+          retention-days: 30
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: educatransito-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/EDUCATRANSITO-0.2.0-debug.apk
+            app/build/outputs/apk/debug/SHA256SUMS
+            app/build/outputs/apk/debug/signature.txt
+            app/build/outputs/apk/debug/package.txt
           if-no-files-found: error
           retention-days: 30

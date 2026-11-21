@@ -15,6 +15,9 @@ abstract class OrientationDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     protected abstract suspend fun saveCounter(value: ProtocolCounterEntity)
 
+    @Query("SELECT COALESCE(MAX(protocolSequence), 0) FROM orientations WHERE protocolYear = :year")
+    protected abstract suspend fun greatestSequence(year: Int): Long
+
     @Insert
     abstract suspend fun insertOrientation(value: OrientationEntity): Long
 
@@ -26,6 +29,24 @@ abstract class OrientationDao {
 
     @Insert
     abstract suspend fun insertAudit(value: AuditLogEntity)
+
+    @Insert
+    abstract suspend fun insertAttachments(values: List<AttachmentEntity>)
+
+    @Transaction
+    @Query("SELECT * FROM orientations WHERE deletedAt IS NULL ORDER BY occurredAt DESC, id DESC")
+    abstract fun observeAllRecords(): Flow<List<OrientationRecord>>
+
+    @Transaction
+    @Query("SELECT * FROM orientations WHERE id = :id AND deletedAt IS NULL LIMIT 1")
+    abstract suspend fun getRecord(id: Long): OrientationRecord?
+
+    @Transaction
+    @Query("SELECT * FROM orientations WHERE protocol = :protocol AND deletedAt IS NULL LIMIT 1")
+    abstract suspend fun getRecordByProtocol(protocol: String): OrientationRecord?
+
+    @Query("SELECT * FROM audit_log WHERE orientationId = :orientationId ORDER BY changedAt, id")
+    abstract suspend fun auditFor(orientationId: Long): List<AuditLogEntity>
 
     @Query("SELECT * FROM orientations WHERE deletedAt IS NULL AND vehiclePlate = :plate ORDER BY occurredAt DESC")
     abstract fun historyByPlate(plate: String): Flow<List<OrientationEntity>>
@@ -41,7 +62,8 @@ abstract class OrientationDao {
 
     @Transaction
     open suspend fun nextProtocolSequence(year: Int): Long {
-        val next = (counter(year)?.lastSequence ?: 0L) + 1L
+        val last = maxOf(counter(year)?.lastSequence ?: 0L, greatestSequence(year))
+        val next = Math.addExact(last, 1L)
         saveCounter(ProtocolCounterEntity(year, next))
         return next
     }
