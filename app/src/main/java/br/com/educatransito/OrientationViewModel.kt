@@ -52,7 +52,6 @@ class OrientationViewModel(application: Application, private val savedState: Sav
     var lastPdfUri by mutableStateOf<Uri?>(null)
     var ocrRawText by mutableStateOf<String?>(null)
         private set
-        private set
     val records = repository.observeAll().onEach { loaded = true }.catch {
         loaded = true
         message = "Não foi possível abrir o histórico local. Feche e abra o aplicativo."
